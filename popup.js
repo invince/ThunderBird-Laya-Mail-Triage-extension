@@ -7,6 +7,7 @@ const DEFAULTS = {
   spamThreshold: 0.85,
   autoTag: true,
   autoSpam: true,
+  captureCorrections: false,
   dryRun: true
 };
 
@@ -52,6 +53,7 @@ async function load() {
   $("spamThreshold").value = cfg.spamThreshold;
   $("autoTag").checked = !!cfg.autoTag;
   $("autoSpam").checked = !!cfg.autoSpam;
+  $("captureCorrections").checked = !!cfg.captureCorrections;
   $("dryRun").checked = !!cfg.dryRun;
   await populateInboxes();
 }
@@ -66,6 +68,7 @@ async function save() {
     spamThreshold: parseFloat($("spamThreshold").value) || 0.85,
     autoTag: $("autoTag").checked,
     autoSpam: $("autoSpam").checked,
+    captureCorrections: $("captureCorrections").checked,
     dryRun: $("dryRun").checked
   });
   setStatus("Saved.", "ok");
@@ -210,9 +213,38 @@ async function clearLog() {
   setStatus("Log cleared.", "ok");
 }
 
+async function exportFixes() {
+  const info = await messenger.runtime.sendMessage({ type: "corrections-info" });
+  if (info && info.error) {
+    setStatus("Export error: " + info.error, "junk");
+    return;
+  }
+  if (!info || !info.count) {
+    setStatus("No corrections captured yet.");
+    return;
+  }
+  const blob = new Blob([info.jsonl + "\n"], { type: "application/x-ndjson" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "laya-corrections.jsonl";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  setStatus(`Exported ${info.count} corrections.`, "ok");
+}
+
+async function clearFixes() {
+  await messenger.runtime.sendMessage({ type: "clear-corrections" });
+  setStatus("Corrections cleared.", "ok");
+}
+
 $("save").addEventListener("click", save);
 $("test").addEventListener("click", test);
 $("scan").addEventListener("click", scan);
 $("showlog").addEventListener("click", showLog);
 $("clearlog").addEventListener("click", clearLog);
+$("exportfixes").addEventListener("click", exportFixes);
+$("clearfixes").addEventListener("click", clearFixes);
 load();

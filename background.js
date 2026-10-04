@@ -10,6 +10,7 @@ const DEFAULTS = {
   spamThreshold: 0.85,
   autoTag: true, // round 1: apply the category tag
   autoSpam: true, // round 2: flag spam (tag + junk)
+  captureCorrections: false, // off by default: record your tag edits as training data
   dryRun: true // safe default: never modify mail until the user opts in
 };
 
@@ -171,6 +172,53 @@ async function setManagedTags(header, keys, managed) {
   await messenger.messages.update(header.id, { tags });
 }
 
+// Look up an existing tag key by display name (no creation).
+async function findTagKey(label) {
+  try {
+    const tags = await messenger.messages.tags.list();
+    const hit = tags.find((t) => (t.tag || "").toLowerCase() === String(label).toLowerCase());
+    return hit ? hit.key : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// --- correction capture (opt-in) -------------------------------------------
+// Predictions are keyed by the stable Message-ID header so a later edit can be
+// matched even after a restart (internal message ids do not survive one).
+async function rememberPrediction(header, cat, spam, appliedCat, appliedSpam) {
+  let mid = header.headerMessageId;
+  if (!mid) {
+    try {
+      mid = (await messenger.messages.get(header.id)).headerMessageId;
+    } catch (e) {
+      return;
+    }
+  }
+  if (!mid) return;
+  const { layaPred = [] } = await messenger.storage.local.get({ layaPred: [] });
+  const rec = { mid, cat, spam, appliedCat: !!appliedCat, appliedSpam: !!appliedSpam, t: Date.now() };
+  const idx = layaPred.findIndex((p) => p.mid === mid);
+  if (idx >= 0) layaPred[idx] = rec;
+  else layaPred.push(rec);
+  while (layaPred.length > 2000) layaPred.shift();
+  await messenger.storage.local.set({ layaPred });
+}
+
+async function getPrediction(mid) {
+  const { layaPred = [] } = await messenger.storage.local.get({ layaPred: [] });
+  return layaPred.find((p) => p.mid === mid) || null;
+}
+
+async function recordCorrection(rec) {
+  const { layaFixes = [] } = await messenger.storage.local.get({ layaFixes: [] });
+  const i = layaFixes.findIndex((f) => f.mid === rec.mid);
+  if (i >= 0) layaFixes[i] = rec;
+  else layaFixes.push(rec);
+  while (layaFixes.length > 1000) layaFixes.shift();
+  await messenger.storage.local.set({ layaFixes });
+}
+
 async function handleMessage(header, { apply, folder }) {
   const cfg = await getCfg();
   let v;
@@ -189,6 +237,18 @@ async function handleMessage(header, { apply, folder }) {
   const applied = [];
   if (cfg.autoTag && v.category) applied.push(v.category);
   if (cfg.autoSpam && spam) applied.push(spamLabel);
+
+  // Remember what we decided (and whether we actually wrote it) so a later
+  // manual tag edit can be diffed into a training sample.
+  if (cfg.captureCorrections) {
+    const appliedCat = !cfg.dryRun && apply && cfg.autoTag && !!v.category;
+    const appliedSpam = !cfg.dryRun && apply && cfg.autoSpam && spam;
+    try {
+      await rememberPrediction(header, v.category, spam, appliedCat, appliedSpam);
+    } catch (e) {
+      /* ignore */
+    }
+  }
 
   let action;
   if (cfg.dryRun) {
@@ -239,6 +299,53 @@ messenger.messages.onNewMailReceived.addListener(async (folder, messages) => {
     await handleMessage(h, { apply: true, folder: where });
   }
 }, true /* monitorAllFolders */);
+
+// --- correction capture: diff the user's own tag edits ----------------------
+messenger.messages.onUpdated.addListener(async (message) => {
+  const cfg = await getCfg();
+  if (!cfg.captureCorrections) return;
+  if (!message || !message.headerMessageId) return;
+
+  const pred = await getPrediction(message.headerMessageId);
+  if (!pred) return;
+
+  const cats = parseCategories(cfg);
+  const tags = Array.isArray(message.tags) ? message.tags : [];
+  let correctedCat = null;
+  for (const c of cats) {
+    const k = await findTagKey(c);
+    if (k && tags.includes(k)) {
+      correctedCat = c;
+      break;
+    }
+  }
+  const spamKey = await findTagKey(cfg.spamLabel || "Spam");
+  const correctedSpam = !!(spamKey && tags.includes(spamKey));
+
+  // Only compare the rounds we actually wrote, unless the user added something.
+  const catChanged = pred.appliedCat ? correctedCat !== pred.cat : correctedCat !== null;
+  const spamChanged = pred.appliedSpam ? !correctedSpam : correctedSpam;
+  if (!catChanged && !spamChanged) return;
+
+  let text = "";
+  try {
+    text = await messageText({ id: message.id });
+  } catch (e) {
+    /* ignore */
+  }
+  await recordCorrection({
+    mid: message.headerMessageId,
+    t: Date.now(),
+    subject: message.subject || "",
+    from: message.author || "",
+    text: text.slice(0, 8000),
+    predicted: { cat: pred.cat, spam: pred.spam },
+    corrected: { cat: correctedCat, spam: correctedSpam }
+  });
+  console.log(
+    `[laya] correction: "${message.subject}" ${pred.cat}/${pred.spam} -> ${correctedCat}/${correctedSpam}`
+  );
+});
 
 // --- manual scan from popup ------------------------------------------------
 async function inboxFolders() {
@@ -386,6 +493,35 @@ messenger.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "clear-log") {
     messenger.storage.local
       .set({ layaLog: [] })
+      .then(() => sendResponse({ ok: true }))
+      .catch((e) => sendResponse({ error: String(e) }));
+    return true;
+  }
+  if (msg.type === "corrections-info") {
+    messenger.storage.local
+      .get({ layaFixes: [] })
+      .then((s) => {
+        const fixes = s.layaFixes || [];
+        const lines = fixes.map((f) =>
+          JSON.stringify({
+            text: f.text,
+            category: f.corrected.cat,
+            spam: f.corrected.spam,
+            predicted_category: f.predicted.cat,
+            predicted_spam: f.predicted.spam,
+            subject: f.subject,
+            from: f.from,
+            t: f.t
+          })
+        );
+        sendResponse({ count: lines.length, jsonl: lines.join("\n") });
+      })
+      .catch((e) => sendResponse({ error: String(e) }));
+    return true;
+  }
+  if (msg.type === "clear-corrections") {
+    messenger.storage.local
+      .set({ layaFixes: [] })
       .then(() => sendResponse({ ok: true }))
       .catch((e) => sendResponse({ error: String(e) }));
     return true;

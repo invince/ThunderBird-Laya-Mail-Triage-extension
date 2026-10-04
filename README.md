@@ -32,6 +32,7 @@ zip -r laya-triage.xpi manifest.json background.js popup.html popup.js
 | Spam threshold | **0.85** | P(spam) ≥ this → flagged as spam |
 | Round 1: auto-tag category | on | apply the category tag |
 | Round 2: flag spam (tag + junk) | on | apply the Spam tag + mark junk |
+| Capture corrections | off | record your manual tag edits as a training dataset (see below) |
 | Dry run | on (safe default) | evaluate only, change nothing; turn off to go live |
 
 ## Two-round tagging
@@ -66,6 +67,19 @@ Tag resolution: an existing tag with the same display name (case-insensitive) is
 1. **Server log (definitive)**: `sudo journalctl -u laya-serve | grep systemone` — Thunderbird's own filter **never** calls Laya
 2. **Category tags**: Thunderbird never applies tags like `shopping` / `ads` on its own
 3. **Popup log**: `mode=dry-run` means it only evaluated; the `action` column shows what actually ran
+
+## Correction capture (opt-in, for future fine-tuning)
+Laya's shipped checkpoints are fixed — the extension does **not** learn on its own. To build a dataset you can fine-tune on:
+
+1. Enable **Capture corrections** in the popup
+2. Use Thunderbird normally; whenever you **manually change a Laya tag** (add/remove a category or `Spam`), the extension diffs it against what it predicted
+3. Click **Export dataset** → downloads `laya-corrections.jsonl`, one JSON object per line:
+   ```json
+   {"text":"...","category":"ads","spam":true,"predicted_category":"shopping","predicted_spam":false,"subject":"...","from":"..."}
+   ```
+4. Use it to **calibrate** (`laya.calibrate`, improves probabilities/thresholds) or **fine-tune** (official guide + notebook, changes the decisions themselves)
+
+Matching is keyed on the stable `Message-ID` header, so a correction still lands after a restart. The extension's own writes never count as corrections (predicted == applied). `Clear fixes` wipes the store.
 
 ## Accuracy & learning
 - Zero-shot is usable, but boundaries like *ads vs spam* are only held together by the threshold plus the two-round split — not perfect
