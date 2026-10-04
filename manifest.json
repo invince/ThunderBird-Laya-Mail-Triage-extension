@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Laya Mail Triage",
+  "version": "0.1.0",
+  "description": "Classify incoming mail with a local Laya decision server (spam / phishing / category).",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "laya-triage@invince.local",
+      "strict_min_version": "128.0"
+    }
+  },
+  "permissions": [
+    "messagesRead",
+    "messagesUpdate",
+    "messagesMove",
+    "messagesTags",
+    "messagesTagsList",
+    "accountsRead",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "action": {
+    "default_title": "Laya Mail Triage",
+    "default_popup": "popup.html"
+  }
+}

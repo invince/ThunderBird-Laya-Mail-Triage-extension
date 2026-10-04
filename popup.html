@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 13px system-ui, sans-serif; width: 340px; margin: 0; padding: 12px; }
+  h1 { font-size: 14px; margin: 0 0 10px; }
+  label { display: block; margin: 8px 0 2px; font-weight: 600; }
+  input[type=text], input[type=password], input[type=number], select {
+    width: 100%; box-sizing: border-box; padding: 4px 6px;
+  }
+  .row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  button { padding: 5px 10px; cursor: pointer; }
+  #status { margin-top: 8px; font-size: 12px; min-height: 16px; }
+  #pwrap { margin-top: 6px; height: 6px; background: color-mix(in srgb, currentColor 18%, transparent); border-radius: 3px; overflow: hidden; display: none; }
+  #pbar { height: 100%; width: 0; background: #2e7d32; transition: width .15s linear; }
+  #results { margin-top: 8px; max-height: 220px; overflow: auto; font-size: 12px; }
+  .item { border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); padding: 4px 0; }
+  .junk { color: #c0392b; font-weight: 700; }
+  .ok { color: #2e7d32; }
+  .meta { opacity: .7; }
+</style>
+</head>
+<body>
+  <h1>Laya Mail Triage</h1>
+
+  <label>Server URL</label>
+  <input id="serverUrl" type="text" placeholder="http://127.0.0.1:8010">
+
+  <label>API key</label>
+  <input id="apiKey" type="password" placeholder="(from ~/.config/laya/api_key)">
+
+  <label>Categories (comma-separated)</label>
+  <input id="categories" type="text" placeholder="personal, work, shopping, ads">
+
+  <label>Spam tag name</label>
+  <input id="spamLabel" type="text" placeholder="Spam">
+
+  <label>Processed tag (marks handled mail)</label>
+  <input id="processedTag" type="text" placeholder="LayaDone">
+
+  <label>Spam threshold</label>
+  <input id="spamThreshold" type="number" min="0" max="1" step="0.05">
+
+  <div class="row">
+    <input id="autoTag" type="checkbox">
+    <label for="autoTag" style="margin:0;font-weight:400">Round 1: auto-tag category</label>
+  </div>
+  <div class="row">
+    <input id="autoSpam" type="checkbox">
+    <label for="autoSpam" style="margin:0;font-weight:400">Round 2: flag spam (tag + junk)</label>
+  </div>
+  <div class="row">
+    <input id="dryRun" type="checkbox">
+    <label for="dryRun" style="margin:0;font-weight:400">Dry run (don't change anything)</label>
+  </div>
+
+  <label>Scan inbox</label>
+  <select id="inboxSel">
+    <option value="all">All inboxes</option>
+  </select>
+
+  <div class="row" style="margin-top:12px">
+    <button id="save">Save</button>
+    <button id="test">Test connection</button>
+    <button id="scan">Scan</button>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <button id="showlog">Show log</button>
+    <button id="clearlog">Clear log</button>
+  </div>
+
+  <div id="status"></div>
+  <div id="pwrap"><div id="pbar"></div></div>
+  <div id="results"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
