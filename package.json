@@ -1,0 +1,16 @@
+{
+  "name": "laya-mail-triage",
+  "version": "1.0.0",
+  "description": "Thunderbird MailExtension that tags incoming mail with a local Laya decision server.",
+  "private": true,
+  "license": "MPL-2.0",
+  "scripts": {
+    "build": "bash build.sh",
+    "lint": "web-ext lint --source-dir .",
+    "run": "web-ext run --target thunderbird",
+    "sign:unlisted": "web-ext sign --channel unlisted --artifacts-dir dist"
+  },
+  "devDependencies": {
+    "web-ext": "^8.0.0"
+  }
+}

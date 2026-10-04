@@ -8,17 +8,16 @@ Auto-classify and tag incoming mail with a local [Laya](https://huggingface.co/c
 - `popup.html` / `popup.js` — settings + Test + Scan + log
 
 ## Install
-Sideloaded at: `~/snap/thunderbird/common/.thunderbird/<profile>/extensions/laya-triage@invince.local.xpi`
+Add-on ID: `laya-mail-triage@invince.github.io`
 
-1. Restart Thunderbird
-2. `Add-ons and Themes` → enable **Laya Mail Triage**
-3. Click the Laya toolbar button → fill in Server URL + API key → **Save** → **Test connection**
+Development (temporary, unsigned): `about:debugging` → This Thunderbird → Load Temporary Add-on → pick `manifest.json` (Reload after each edit).
 
-If it is unsigned, use `about:debugging` → This Thunderbird → Load Temporary Add-on → pick `manifest.json` (Reload after each edit — much faster to iterate).
+Sideload a built XPI: copy `dist/laya-mail-triage.xpi` to
+`<profile>/extensions/laya-mail-triage@invince.github.io.xpi`, then restart Thunderbird and enable it under `Add-ons and Themes`.
 
 Build the XPI:
 ```bash
-zip -r laya-triage.xpi manifest.json background.js popup.html popup.js
+bash build.sh          # → dist/laya-mail-triage.xpi
 ```
 
 ## Configuration (popup)
@@ -93,3 +92,24 @@ Matching is keyed on the stable `Message-ID` header, so a correction still lands
 
 ## ⚠️ Gotcha: host_permissions cannot include a port
 Firefox/Thunderbird match patterns **do not support ports** ([bug 1362809](https://bugzilla.mozilla.org/show_bug.cgi?id=1362809)). Writing `http://127.0.0.1:8010/*` is an invalid pattern → the host permission is not granted → `fetch` fails with `NetworkError`. **Correct form:** `http://127.0.0.1/*` (no port; matches every port).
+
+## Publishing (addons.thunderbird.net)
+- **ID** `laya-mail-triage@invince.github.io` · **License** MPL-2.0 · **min Thunderbird** 148.0
+- **Data collection**: the manifest declares `browser_specific_settings.gecko.data_collection_permissions.required = ["personalCommunications"]`. Mandatory for new extensions since 2025-11-03, because the message body is transmitted to the configured server.
+- **Permissions rationale** (for the reviewer notes):
+  - `messagesRead` — read the message body to classify it
+  - `messagesUpdate` — apply tags and the junk flag
+  - `messagesMove`, `messagesTags`, `messagesTagsList` — create/apply/move tags
+  - `accountsRead` — list accounts and folders for the inbox selector
+  - `storage` — settings, classification log, correction dataset
+  - host `http://127.0.0.1/*` + `http://localhost/*` — the local decision server
+- **No minified or obfuscated code**, so no source-code package is required.
+- **Validate / sign / submit**:
+  ```bash
+  npm i -D web-ext
+  npx web-ext lint                      # 0 errors (TB-only permissions warn under the Firefox schema)
+  npx web-ext sign --channel unlisted   # self-distribution (needs AMO API keys)
+  ```
+  For a public listing, upload `dist/laya-mail-triage.xpi` at <https://addons.thunderbird.net/en-US/developers/>.
+- **Listing summary**: "Classify and tag incoming mail with a local Laya decision server: categories plus a spam check."
+- **Privacy policy**: see [`PRIVACY.md`](PRIVACY.md).

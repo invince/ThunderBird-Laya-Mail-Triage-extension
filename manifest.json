@@ -1,13 +1,26 @@
 {
   "manifest_version": 3,
   "name": "Laya Mail Triage",
-  "version": "0.1.0",
-  "description": "Classify incoming mail with a local Laya decision server (spam / phishing / category).",
+  "version": "1.0.0",
+  "description": "Classify and tag incoming mail with a local Laya decision server: categories plus a spam check.",
+  "author": "invince",
+  "developer": {
+    "name": "invince",
+    "url": "https://github.com/invince"
+  },
+  "homepage_url": "https://github.com/invince/ThunderBird-Laya-Mail-Triage-extension",
   "browser_specific_settings": {
     "gecko": {
-      "id": "laya-triage@invince.local",
-      "strict_min_version": "128.0"
+      "id": "laya-mail-triage@invince.github.io",
+      "strict_min_version": "148.0",
+      "data_collection_permissions": {
+        "required": ["personalCommunications"]
+      }
     }
+  },
+  "icons": {
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png"
   },
   "permissions": [
     "messagesRead",
