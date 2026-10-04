@@ -49,3 +49,6 @@ See `PRIVACY.md` in the repository (paste its content into the listing's privacy
 - No minified or obfuscated code; sources are plain JS/HTML/CSS in the repository.
 - No analytics, no remote code, no third-party scripts.
 - `messages.list` sort options require Thunderbird 148+, hence `strict_min_version: 148.0`.
+
+## Screenshots
+- `docs/screenshot-settings.png` — the settings popup

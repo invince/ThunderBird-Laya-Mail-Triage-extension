@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <style>
   :root { color-scheme: light dark; }
-  body { font: 13px system-ui, sans-serif; width: 340px; margin: 0; padding: 12px; }
-  h1 { font-size: 14px; margin: 0 0 10px; }
-  label { display: block; margin: 8px 0 2px; font-weight: 600; }
+  body { font: 12px system-ui, sans-serif; width: 340px; margin: 0; padding: 10px; }
+  h1 { font-size: 13px; margin: 0 0 6px; }
+  label { display: block; margin: 6px 0 2px; font-weight: 600; }
   input[type=text], input[type=password], input[type=number], select {
-    width: 100%; box-sizing: border-box; padding: 4px 6px;
+    width: 100%; box-sizing: border-box; padding: 3px 5px;
   }
-  .row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
-  button { padding: 5px 10px; cursor: pointer; }
+  .row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  button { padding: 4px 8px; cursor: pointer; font-size: 12px; }
   #status { margin-top: 8px; font-size: 12px; min-height: 16px; }
   #pwrap { margin-top: 6px; height: 6px; background: color-mix(in srgb, currentColor 18%, transparent); border-radius: 3px; overflow: hidden; display: none; }
   #pbar { height: 100%; width: 0; background: #2e7d32; transition: width .15s linear; }
@@ -57,7 +57,7 @@
   </div>
   <div class="row">
     <input id="captureCorrections" type="checkbox">
-    <label for="captureCorrections" style="margin:0;font-weight:400">Capture corrections (record my tag edits as training data)</label>
+    <label for="captureCorrections" style="margin:0;font-weight:400">Capture corrections (build a fine-tuning dataset)</label>
   </div>
 
   <label>Scan inbox</label>
@@ -65,17 +65,15 @@
     <option value="all">All inboxes</option>
   </select>
 
-  <div class="row" style="margin-top:12px">
+  <div class="row" style="margin-top:10px">
     <button id="save">Save</button>
-    <button id="test">Test connection</button>
+    <button id="test">Test</button>
     <button id="scan">Scan</button>
   </div>
-  <div class="row" style="margin-top:6px">
-    <button id="showlog">Show log</button>
+  <div class="row">
+    <button id="showlog">Log</button>
+    <button id="exportfixes">Export</button>
     <button id="clearlog">Clear log</button>
-  </div>
-  <div class="row" style="margin-top:6px">
-    <button id="exportfixes">Export dataset</button>
     <button id="clearfixes">Clear fixes</button>
   </div>
 
